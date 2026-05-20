@@ -65,7 +65,8 @@ export function LeadsDashboard() {
 
       {error && (
         <div role="alert" style={{ color: "crimson" }}>
-          Failed to load leads. <button onClick={() => refetch()}>Retry</button>
+          {error.message || "Failed to load leads."}{" "}
+          <button onClick={() => refetch()}>Retry</button>
         </div>
       )}
 

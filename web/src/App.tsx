@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RegistrationForm } from "./components/RegistrationForm";
 import { LeadsDashboard } from "./components/LeadsDashboard";
+import { AdminGate } from "./components/AdminGate";
 
 export function App() {
   const [tab, setTab] = useState<"register" | "dashboard">("register");
@@ -15,7 +16,13 @@ export function App() {
           Leads dashboard
         </button>
       </nav>
-      {tab === "register" ? <RegistrationForm /> : <LeadsDashboard />}
+      {tab === "register" ? (
+        <RegistrationForm />
+      ) : (
+        <AdminGate>
+          <LeadsDashboard />
+        </AdminGate>
+      )}
     </main>
   );
 }

@@ -1,6 +1,22 @@
-import { ApolloClient, InMemoryCache } from "@apollo/client";
+import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
+
+const httpLink = createHttpLink({
+  uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:4000/",
+});
+
+// Attach the admin token (if present) to every request.
+const authLink = setContext((_, { headers }) => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    headers: {
+      ...headers,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+  };
+});
 
 export const client = new ApolloClient({
-  uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:4000/",
+  link: authLink.concat(httpLink),
   cache: new InMemoryCache(),
 });
