@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brighte
+      POSTGRES_PASSWORD: brighte
+      POSTGRES_DB: brighte_eats
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Auto-creates brighte_eats_test on first start (fresh volume only).
+      - ./server/docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brighte -d brighte_eats"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  pgdata:
