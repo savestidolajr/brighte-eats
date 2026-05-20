@@ -54,4 +54,14 @@ describe("registerLead", () => {
     });
     expect(links).toHaveLength(1);
   });
+
+  it("logs ADDED history for each service at registration", async () => {
+    const lead = await registerLead(prisma, input);
+    const changes = await prisma.serviceInterestChange.findMany({
+      where: { leadId: lead.id },
+    });
+    expect(changes).toHaveLength(2);
+    expect(changes.every((c) => c.action === "ADDED")).toBe(true);
+    expect(changes.every((c) => c.source === "registration")).toBe(true);
+  });
 });

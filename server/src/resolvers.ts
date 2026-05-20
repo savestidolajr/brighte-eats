@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
 import { Prisma, type PrismaClient, type Lead } from "@prisma/client";
+import { z } from "zod";
 import type { Context } from "./context.js";
 import { registerInputSchema } from "./validation.js";
 import { registerLimiter } from "./rateLimit.js";
@@ -31,16 +32,27 @@ export async function registerLead(
   }
 
   try {
-    return await prisma.lead.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        mobile: input.mobile,
-        postcode: input.postcode,
-        services: {
-          create: services.map((s) => ({ serviceId: s.id })),
+    return await prisma.$transaction(async (tx) => {
+      const lead = await tx.lead.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          mobile: input.mobile,
+          postcode: input.postcode,
+          services: {
+            create: services.map((s) => ({ serviceId: s.id })),
+          },
         },
-      },
+      });
+      await tx.serviceInterestChange.createMany({
+        data: services.map((s) => ({
+          leadId: lead.id,
+          serviceCode: s.code,
+          action: "ADDED",
+          source: "registration",
+        })),
+      });
+      return lead;
     });
   } catch (e) {
     if (
@@ -53,6 +65,86 @@ export async function registerLead(
     }
     throw e;
   }
+}
+
+const codesSchema = z.array(z.string().min(1)).min(1, "Select at least one service");
+
+// Admin: replace a lead's service interests with `rawCodes`, logging each add/remove.
+export async function setLeadServices(
+  prisma: PrismaClient,
+  leadId: string,
+  rawCodes: unknown
+): Promise<Lead> {
+  const parsed = codesSchema.safeParse(rawCodes);
+  if (!parsed.success) {
+    throw new GraphQLError(parsed.error.issues[0].message, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  const uniqueCodes = [...new Set(parsed.data)];
+
+  const services = await prisma.service.findMany({
+    where: { code: { in: uniqueCodes } },
+  });
+  if (services.length !== uniqueCodes.length) {
+    const known = new Set(services.map((s) => s.code));
+    const unknown = uniqueCodes.filter((c) => !known.has(c));
+    throw new GraphQLError(`Unknown service code(s): ${unknown.join(", ")}`, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: { services: { include: { service: true } } },
+  });
+  if (!lead) {
+    throw new GraphQLError("Lead not found", {
+      extensions: { code: "NOT_FOUND" },
+    });
+  }
+
+  const currentCodes = new Set(lead.services.map((ls) => ls.service.code));
+  const targetCodes = new Set(uniqueCodes);
+  const toAdd = services.filter((s) => !currentCodes.has(s.code));
+  const toRemove = lead.services.filter(
+    (ls) => !targetCodes.has(ls.service.code)
+  );
+
+  await prisma.$transaction(async (tx) => {
+    if (toRemove.length) {
+      await tx.leadService.deleteMany({
+        where: {
+          leadId,
+          serviceId: { in: toRemove.map((ls) => ls.serviceId) },
+        },
+      });
+    }
+    if (toAdd.length) {
+      await tx.leadService.createMany({
+        data: toAdd.map((s) => ({ leadId, serviceId: s.id })),
+      });
+    }
+    const changes = [
+      ...toAdd.map((s) => ({
+        leadId,
+        serviceCode: s.code,
+        action: "ADDED",
+        source: "admin_edit",
+      })),
+      ...toRemove.map((ls) => ({
+        leadId,
+        serviceCode: ls.service.code,
+        action: "REMOVED",
+        source: "admin_edit",
+      })),
+    ];
+    if (changes.length) {
+      await tx.serviceInterestChange.createMany({ data: changes });
+    }
+  });
+
+  return prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
 }
 
 type LeadsArgs = {
@@ -100,6 +192,14 @@ export const resolvers = {
       }
       return registerLead(ctx.prisma, args.input);
     },
+    setLeadServices: async (
+      _p: unknown,
+      args: { leadId: string; services: unknown },
+      ctx: Context
+    ) => {
+      requireAdmin(ctx);
+      return setLeadServices(ctx.prisma, args.leadId, args.services);
+    },
   },
 
   Lead: {
@@ -107,5 +207,16 @@ export const resolvers = {
     services: (parent: Lead, _a: unknown, ctx: Context) =>
       ctx.loaders.servicesByLead.load(parent.id),
     createdAt: (parent: Lead) => parent.createdAt.toISOString(),
+    history: (parent: Lead, _a: unknown, ctx: Context) => {
+      requireAdmin(ctx);
+      return ctx.prisma.serviceInterestChange.findMany({
+        where: { leadId: parent.id },
+        orderBy: { changedAt: "desc" },
+      });
+    },
+  },
+
+  ServiceInterestChange: {
+    changedAt: (parent: { changedAt: Date }) => parent.changedAt.toISOString(),
   },
 };

@@ -8,14 +8,15 @@ datasource db {
 }
 
 model Lead {
-  id        String        @id @default(cuid())
+  id        String                  @id @default(cuid())
   name      String
-  email     String        @unique
+  email     String                  @unique
   mobile    String
   postcode  String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
   services  LeadService[]
+  changes   ServiceInterestChange[]
 
   @@index([createdAt])
 }
@@ -37,4 +38,16 @@ model LeadService {
 
   @@id([leadId, serviceId])
   @@index([serviceId])
+}
+
+model ServiceInterestChange {
+  id          String   @id @default(cuid())
+  leadId      String
+  serviceCode String
+  action      String   // "ADDED" | "REMOVED"
+  source      String   @default("registration") // or "admin_edit"
+  changedAt   DateTime @default(now())
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
 }

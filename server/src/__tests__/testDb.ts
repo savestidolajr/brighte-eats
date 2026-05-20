@@ -10,7 +10,8 @@ if (!url) {
 export const prisma = new PrismaClient({ datasources: { db: { url } } });
 
 export async function resetDb() {
-  // Order matters: child table first.
+  // Order matters: child tables first.
+  await prisma.serviceInterestChange.deleteMany();
   await prisma.leadService.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.service.deleteMany();

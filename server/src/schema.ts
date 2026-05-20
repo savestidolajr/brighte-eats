@@ -5,6 +5,13 @@ export const typeDefs = /* GraphQL */ `
     label: String!
   }
 
+  type ServiceInterestChange {
+    id: ID!
+    serviceCode: String!
+    action: String!
+    changedAt: String!
+  }
+
   type Lead {
     id: ID!
     name: String!
@@ -13,6 +20,7 @@ export const typeDefs = /* GraphQL */ `
     postcode: String!
     createdAt: String!
     services: [Service!]!
+    history: [ServiceInterestChange!]!
   }
 
   type LeadConnection {
@@ -54,5 +62,6 @@ export const typeDefs = /* GraphQL */ `
 
   type Mutation {
     register(input: RegisterInput!): Lead!
+    setLeadServices(leadId: ID!, services: [String!]!): Lead!
   }
 `;
