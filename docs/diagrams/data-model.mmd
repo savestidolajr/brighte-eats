@@ -1,0 +1,32 @@
+erDiagram
+    Lead ||--o{ LeadService : has
+    Service ||--o{ LeadService : "referenced by"
+    Lead ||--o{ ServiceInterestChange : "audited by"
+
+    Lead {
+        string id PK
+        string email UK
+        string name
+        string mobile
+        string postcode
+        datetime createdAt
+    }
+    Service {
+        string id PK
+        string code UK
+        string label
+        boolean active
+    }
+    LeadService {
+        string leadId PK,FK
+        string serviceId PK,FK
+        datetime createdAt
+    }
+    ServiceInterestChange {
+        string id PK
+        string leadId FK
+        string serviceCode "snapshot, survives delete"
+        string action "ADDED | REMOVED"
+        string source "registration | admin_edit"
+        datetime changedAt
+    }

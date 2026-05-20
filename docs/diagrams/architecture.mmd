@@ -1,0 +1,34 @@
+flowchart TB
+    subgraph Browser["Browser — React + Vite SPA"]
+        direction TB
+        Reg["RegistrationForm<br/>/register · public"]
+        Gate["AdminGate<br/>token → localStorage"]
+        Dash["LeadsDashboard + LeadDetail<br/>/admin"]
+        Svc["ServiceManager<br/>/admin/services"]
+        Apollo["Apollo Client<br/>authLink + httpLink"]
+        Reg --> Apollo
+        Gate --> Dash --> Apollo
+        Gate --> Svc --> Apollo
+    end
+
+    Apollo -->|"GraphQL / HTTP<br/>Authorization: Bearer token"| Server
+
+    subgraph Server["Apollo Server (standalone) :4000"]
+        direction TB
+        Ctx["context<br/>ip · isAdmin · loaders"]
+        Res["resolvers<br/>register · setLeadServices · catalog · queries"]
+        Auth["requireAdmin<br/>timing-safe token"]
+        RL["rate limiter<br/>in-memory, per-IP"]
+        Loader["DataLoader<br/>servicesByLead (no N+1)"]
+        Ctx --> Res
+        Res --> Auth
+        Res --> RL
+        Res --> Loader
+    end
+
+    Server -->|Prisma Client| DB[("PostgreSQL")]
+
+    classDef pub fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef adm fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+    class Reg pub;
+    class Gate,Dash,Svc adm;
