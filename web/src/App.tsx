@@ -3,20 +3,29 @@ import { RegistrationForm } from "./components/RegistrationForm";
 import { LeadsDashboard } from "./components/LeadsDashboard";
 import { AdminGate } from "./components/AdminGate";
 
-const linkStyle = ({ isActive }: { isActive: boolean }) => ({
-  fontWeight: isActive ? 700 : 400,
-  textDecoration: "none",
-});
-
 export function App() {
   return (
-    <main style={{ maxWidth: 880, margin: "2rem auto", fontFamily: "system-ui" }}>
-      <h1>Brighte Eats</h1>
-      <nav style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-        <NavLink to="/register" style={linkStyle}>
+    <main className="max-w-3xl mx-auto p-6 font-sans">
+      <h1 className="text-2xl font-bold mb-6 text-slate-800">Brighte Eats</h1>
+      <nav className="flex gap-4 mb-6 border-b border-slate-200 pb-4">
+        <NavLink
+          to="/register"
+          className={({ isActive }) =>
+            isActive
+              ? "font-semibold text-indigo-600 underline underline-offset-4"
+              : "text-slate-600 hover:text-indigo-600 transition-colors"
+          }
+        >
           Register interest
         </NavLink>
-        <NavLink to="/admin" style={linkStyle}>
+        <NavLink
+          to="/admin"
+          className={({ isActive }) =>
+            isActive
+              ? "font-semibold text-indigo-600 underline underline-offset-4"
+              : "text-slate-600 hover:text-indigo-600 transition-colors"
+          }
+        >
           Leads dashboard
         </NavLink>
       </nav>

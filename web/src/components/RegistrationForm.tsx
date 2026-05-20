@@ -66,56 +66,74 @@ export function RegistrationForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
-      {(["name", "email", "mobile", "postcode"] as const).map((k) => (
-        <div key={k} style={{ marginBottom: 12 }}>
-          <label htmlFor={k} style={{ display: "block", textTransform: "capitalize" }}>
-            {k}
-          </label>
-          <input id={k} value={fields[k]} onChange={set(k)} />
-          {errors[k] && (
-            <small style={{ color: "crimson" }}>{errors[k]}</small>
-          )}
-        </div>
-      ))}
-
-      <fieldset style={{ marginBottom: 12 }}>
-        <legend>Services</legend>
-        {svcLoading && <small>Loading services…</small>}
-        {svcError && (
-          <small style={{ color: "crimson" }}>
-            Could not load services. Refresh to try again.
-          </small>
-        )}
-        {(svcData?.services ?? []).map((s) => (
-          <label key={s.code} style={{ display: "block" }}>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 className="text-lg font-semibold text-slate-800 mb-5">Register your interest</h2>
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
+        {(["name", "email", "mobile", "postcode"] as const).map((k) => (
+          <div key={k}>
+            <label
+              htmlFor={k}
+              className="block text-sm font-medium text-slate-700 capitalize mb-1"
+            >
+              {k}
+            </label>
             <input
-              type="checkbox"
-              checked={services.includes(s.code)}
-              onChange={() => toggleService(s.code)}
+              id={k}
+              value={fields[k]}
+              onChange={set(k)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            {s.label}
-          </label>
+            {errors[k] && (
+              <small className="text-red-600 text-xs mt-1 block">{errors[k]}</small>
+            )}
+          </div>
         ))}
-        {errors.services && (
-          <small style={{ color: "crimson" }}>{errors.services}</small>
+
+        <fieldset className="border border-slate-200 rounded-md p-4">
+          <legend className="text-sm font-medium text-slate-700 px-1">Services</legend>
+          {svcLoading && <small className="text-slate-500">Loading services…</small>}
+          {svcError && (
+            <small className="text-red-600 text-xs">
+              Could not load services. Refresh to try again.
+            </small>
+          )}
+          <div className="space-y-2 mt-2">
+            {(svcData?.services ?? []).map((s) => (
+              <label key={s.code} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={services.includes(s.code)}
+                  onChange={() => toggleService(s.code)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+          {errors.services && (
+            <small className="text-red-600 text-xs mt-1 block">{errors.services}</small>
+          )}
+        </fieldset>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
+        >
+          {loading ? "Submitting…" : "Submit"}
+        </button>
+
+        {error && (
+          <p role="alert" className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            {error.graphQLErrors[0]?.message ?? error.message}
+          </p>
         )}
-      </fieldset>
-
-      <button type="submit" disabled={loading}>
-        {loading ? "Submitting…" : "Submit"}
-      </button>
-
-      {error && (
-        <p role="alert" style={{ color: "crimson" }}>
-          {error.graphQLErrors[0]?.message ?? error.message}
-        </p>
-      )}
-      {data?.register && !error && (
-        <p role="status" style={{ color: "green" }}>
-          Thanks — your interest has been registered.
-        </p>
-      )}
-    </form>
+        {data?.register && !error && (
+          <p role="status" className="text-green-700 text-sm bg-green-50 border border-green-200 rounded-md px-3 py-2">
+            Thanks — your interest has been registered.
+          </p>
+        )}
+      </form>
+    </div>
   );
 }
