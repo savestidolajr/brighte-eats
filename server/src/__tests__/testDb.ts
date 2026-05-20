@@ -1,10 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 
-// Point Prisma at the test database before instantiating the client.
-process.env.DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+// Use the dedicated test database; injected explicitly so it never depends on
+// module-load ordering relative to dotenv setup.
+const url = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!url) {
+  throw new Error("TEST_DATABASE_URL or DATABASE_URL must be set for tests");
+}
 
-export const prisma = new PrismaClient();
+export const prisma = new PrismaClient({ datasources: { db: { url } } });
 
 export async function resetDb() {
   // Order matters: child table first.

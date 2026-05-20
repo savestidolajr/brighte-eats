@@ -16,13 +16,14 @@ export async function registerLead(
     });
   }
   const input = parsed.data;
+  const uniqueCodes = [...new Set(input.services)];
 
   const services = await prisma.service.findMany({
-    where: { code: { in: input.services } },
+    where: { code: { in: uniqueCodes } },
   });
-  if (services.length !== new Set(input.services).size) {
+  if (services.length !== uniqueCodes.length) {
     const known = new Set(services.map((s) => s.code));
-    const unknown = input.services.filter((c) => !known.has(c));
+    const unknown = uniqueCodes.filter((c) => !known.has(c));
     throw new GraphQLError(`Unknown service code(s): ${unknown.join(", ")}`, {
       extensions: { code: "BAD_USER_INPUT" },
     });
@@ -75,14 +76,9 @@ export const resolvers = {
       const where = args.service
         ? { services: { some: { service: { code: args.service } } } }
         : {};
+      const dir = (args.sortDir ?? "DESC").toLowerCase() as "asc" | "desc";
       const orderBy =
-        args.sortBy === "NAME"
-          ? { name: (args.sortDir ?? "ASC").toLowerCase() as "asc" | "desc" }
-          : {
-              createdAt: (args.sortDir ?? "DESC").toLowerCase() as
-                | "asc"
-                | "desc",
-            };
+        args.sortBy === "NAME" ? { name: dir } : { createdAt: dir };
       const [items, totalCount] = await Promise.all([
         ctx.prisma.lead.findMany({ where, orderBy, take: limit, skip: offset }),
         ctx.prisma.lead.count({ where }),

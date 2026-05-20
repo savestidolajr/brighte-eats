@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// AU mobile: 10 digits starting 04, allow spaces. Postcode: 4 digits.
+// AU mobile: 10 digits starting with 0 (no spaces). Postcode: 4 digits.
 export const registerInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   email: z.string().trim().toLowerCase().email("Invalid email"),

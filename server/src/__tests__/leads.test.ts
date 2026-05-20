@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { prisma, resetDb, seedServices } from "./testDb.js";
 import { registerLead, resolvers } from "../resolvers.js";
 import { buildContext } from "../context.js";
@@ -7,6 +7,9 @@ function ctx() {
   return buildContext(prisma, "test-ip");
 }
 
+beforeAll(async () => {
+  await resetDb();
+});
 beforeEach(async () => {
   await resetDb();
   await seedServices();

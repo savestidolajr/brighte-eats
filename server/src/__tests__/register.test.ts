@@ -43,4 +43,15 @@ describe("registerLead", () => {
       registerLead(prisma, { ...input, services: ["teleport"] })
     ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
   });
+
+  it("deduplicates repeated service codes", async () => {
+    const lead = await registerLead(prisma, {
+      ...input,
+      services: ["delivery", "delivery"],
+    });
+    const links = await prisma.leadService.findMany({
+      where: { leadId: lead.id },
+    });
+    expect(links).toHaveLength(1);
+  });
 });
