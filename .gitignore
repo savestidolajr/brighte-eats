@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Env / secrets (commit .env.example, never .env)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Vite
+web/dist/
+
+# Prisma generated client (regenerated from schema)
+server/src/generated/
+**/generated/prisma/
+
+# Tests / coverage
+coverage/
+.vitest/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Docker volumes (if mapped locally)
+pgdata/
