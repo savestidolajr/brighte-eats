@@ -31,7 +31,8 @@ npm run dev                  # server on :4000 + web (Vite) concurrently
 
 - GraphQL API + Apollo Sandbox: http://localhost:4000/
 - Web app: the URL Vite prints (typically http://localhost:5173/)
-- Routes: `/register` (public form) · `/admin` (leads dashboard, behind the admin token)
+- Routes: `/register` (public form) · `/admin` (leads dashboard) · `/admin/services`
+  (manage service types) — both `/admin*` routes are behind the admin token
 
 The web app defaults to `http://localhost:4000/` for the API. To point it elsewhere,
 create `web/.env` with `VITE_GRAPHQL_URL=...` (Vite reads env from the `web/` directory).
@@ -54,10 +55,12 @@ npm test                     # server (Vitest) + web (Vitest + Testing Library)
 > `docker exec -i "$(docker compose ps -q db)" psql -U brighte -d postgres -c "CREATE DATABASE brighte_eats_test;"`
 
 - Server: validation (incl. a guard that mobile stays required), register (happy path /
-  duplicate / unknown + duplicate service code / history logged), leads pagination + filter,
-  rate limiter, the admin token boundary, and the audit trail (`setLeadServices` add/remove,
-  unknown-code + missing-lead + history-guard) — 26 tests.
-- Web: registration form (success, API error, validation block) and the admin gate — 5 tests.
+  duplicate / unknown + duplicate service code / history logged / retired-service rejected),
+  leads pagination + filter, rate limiter, the admin token boundary, the audit trail
+  (`setLeadServices` add/remove, unknown-code + missing-lead + history-guard), and the
+  service catalog (create/update/retire, admin-guard + duplicate + format) — 39 tests.
+- Web: registration form (success, API error, validation block), the admin gate, and the
+  service-manager panel — 6 tests.
 
 ## Why I chose [database / framework / frontend library]
 
@@ -87,6 +90,8 @@ not an enum or a JSON column.
   filtering/indexing, and no DB-level validation of values.
 
 This directly answers "service types may change over time": adding a type is data, not code.
+Admins manage the catalog live from the UI (see **Service catalog management**), and the
+public form reflects changes immediately because it reads the `services` query.
 
 ## Validation strategy — client vs server
 
@@ -139,6 +144,23 @@ transaction so concurrent edits can't compute a stale diff. `Lead.history` expos
 log (admin-only); the dashboard's lead detail shows the timeline and an inline editor.
 The `serviceCode` is stored as a snapshot so history survives a service being removed.
 
+## Service catalog management (admin)
+
+Admins manage the **service types** themselves (not just a lead's interests) from
+`/admin/services`:
+- `createService(code, label)` — add a new type (e.g. `installation`). Code is validated
+  (lowercase / digits / hyphens), normalised, and unique (`CODE_TAKEN` on clash).
+- `updateService(code, label)` — rename a type's label; `code` is the stable identifier.
+- `setServiceActive(code, active)` — **retire/restore** a type. The public `services`
+  query returns active types only, so a retired type disappears from the registration form
+  and is rejected at `register` (`SERVICE_UNAVAILABLE`) — but existing leads and history
+  keep it. `allServices` (admin) returns everything for management.
+
+All four are **admin-guarded** server-side. Because the registration form reads the live
+`services` query, a newly added type appears to customers immediately — no deploy. This is
+the product-level answer to "service types may change over time" (the data model already
+made it a one-row change; this adds the admin UI to do it safely).
+
 ## Frontend extras (stretch)
 
 - **Routing** — `react-router` splits the public `/register` form from the gated `/admin`
@@ -169,8 +191,9 @@ The `serviceCode` is stored as a snapshot so history survives a service being re
   is a single shared secret — there are no per-user accounts, roles, or token rotation.
 - Audit-trail `source` is the action origin (`registration`/`admin_edit`), not a per-user
   actor — there's no user identity behind the shared admin token to attribute edits to.
-- Retiring a service type isn't graceful yet — no `Service.active` flag, so a removed type
-  would need soft-delete to keep history while hiding it from new registrations.
+- Editing a lead's interests via `setLeadServices` validates code *existence*, not
+  *active* status (admin flexibility) — so an admin could re-add a retired type to an
+  existing lead, whereas public registration rejects retired types. Deliberate asymmetry.
 - Rate limiter is **in-memory**, so limits are per-process — fine for one instance only.
 - **Offset** pagination, not cursor.
 - No GraphQL code generation — the web TS types and operations are hand-written and kept
