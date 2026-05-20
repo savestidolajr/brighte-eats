@@ -1,0 +1,16 @@
+{
+  "name": "brighte-eats",
+  "private": true,
+  "workspaces": ["server", "web"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:migrate": "npm --workspace server run migrate",
+    "db:seed": "npm --workspace server run seed",
+    "dev": "concurrently -n server,web -c blue,magenta \"npm --workspace server run dev\" \"npm --workspace web run dev\"",
+    "test": "npm --workspace server test && npm --workspace web test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
