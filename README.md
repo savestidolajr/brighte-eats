@@ -52,9 +52,10 @@ npm test                     # server (Vitest) + web (Vitest + Testing Library)
 > run — create the DB once with:
 > `docker exec -i "$(docker compose ps -q db)" psql -U brighte -d postgres -c "CREATE DATABASE brighte_eats_test;"`
 
-- Server: validation, register (happy path / duplicate / unknown + duplicate service code),
-  leads pagination + filter, rate limiter — 13 tests.
-- Web: registration form surfaces an API error, and blocks submit on invalid input — 2 tests.
+- Server: validation (incl. a guard that mobile stays required), register (happy path /
+  duplicate / unknown + duplicate service code), leads pagination + filter, rate limiter,
+  and the admin token boundary (incl. non-admin rejection) — 20 tests.
+- Web: registration form (success, API error, validation block) and the admin gate — 5 tests.
 
 ## Why I chose [database / framework / frontend library]
 
