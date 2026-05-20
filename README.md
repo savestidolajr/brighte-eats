@@ -35,18 +35,20 @@ create `web/.env` with `VITE_GRAPHQL_URL=...` (Vite reads env from the `web/` di
 
 ### Tests
 
-Server tests run against a **separate** database so they never touch your dev data.
-Create it once, then run the suite:
+Server tests run against a **separate** database (`brighte_eats_test`) so they never
+touch your dev data. On a fresh `docker compose up` the test DB is created automatically
+(via `server/docker/initdb`); apply migrations to it, then run the suite:
 
 ```bash
-# create + migrate the test database
-docker exec -i "$(docker compose ps -q db)" psql -U brighte -d postgres \
-  -c "CREATE DATABASE brighte_eats_test;"
 DATABASE_URL="postgresql://brighte:brighte@localhost:5432/brighte_eats_test?schema=public" \
   npm --workspace server run migrate:deploy
 
 npm test                     # server (Vitest) + web (Vitest + Testing Library)
 ```
+
+> If your Postgres volume already existed before this change, the auto-create won't have
+> run — create the DB once with:
+> `docker exec -i "$(docker compose ps -q db)" psql -U brighte -d postgres -c "CREATE DATABASE brighte_eats_test;"`
 
 - Server: validation, register (happy path / duplicate / unknown + duplicate service code),
   leads pagination + filter, rate limiter — 13 tests.
