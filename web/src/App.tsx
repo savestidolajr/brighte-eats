@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, NavLink } from "react-router-dom";
 import { RegistrationForm } from "./components/RegistrationForm";
 import { LeadsDashboard } from "./components/LeadsDashboard";
 import { AdminGate } from "./components/AdminGate";
+import { ServiceManager } from "./components/ServiceManager";
 
 export function App() {
   return (
@@ -20,6 +21,7 @@ export function App() {
         </NavLink>
         <NavLink
           to="/admin"
+          end
           className={({ isActive }) =>
             isActive
               ? "font-semibold text-indigo-600 underline underline-offset-4"
@@ -27,6 +29,16 @@ export function App() {
           }
         >
           Leads dashboard
+        </NavLink>
+        <NavLink
+          to="/admin/services"
+          className={({ isActive }) =>
+            isActive
+              ? "font-semibold text-indigo-600 underline underline-offset-4"
+              : "text-slate-600 hover:text-indigo-600 transition-colors"
+          }
+        >
+          Manage services
         </NavLink>
       </nav>
       <Routes>
@@ -37,6 +49,14 @@ export function App() {
           element={
             <AdminGate>
               <LeadsDashboard />
+            </AdminGate>
+          }
+        />
+        <Route
+          path="/admin/services"
+          element={
+            <AdminGate>
+              <ServiceManager />
             </AdminGate>
           }
         />

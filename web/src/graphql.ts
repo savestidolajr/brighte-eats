@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-export interface Service { id: string; code: string; label: string }
+export interface Service { id: string; code: string; label: string; active?: boolean }
 export interface ServiceInterestChange {
   id: string;
   action: string;     // "ADDED" | "REMOVED"
@@ -24,6 +24,30 @@ export interface LeadConnection {
   limit: number;
   offset: number;
 }
+
+export const ALL_SERVICES = gql`
+  query AllServices {
+    allServices { id code label active }
+  }
+`;
+
+export const CREATE_SERVICE = gql`
+  mutation CreateService($code: String!, $label: String!) {
+    createService(code: $code, label: $label) { id code label active }
+  }
+`;
+
+export const UPDATE_SERVICE = gql`
+  mutation UpdateService($code: String!, $label: String!) {
+    updateService(code: $code, label: $label) { id code label active }
+  }
+`;
+
+export const SET_SERVICE_ACTIVE = gql`
+  mutation SetServiceActive($code: String!, $active: Boolean!) {
+    setServiceActive(code: $code, active: $active) { id code label active }
+  }
+`;
 
 export const SERVICES = gql`
   query Services {
