@@ -18,6 +18,8 @@ brighte-eats/
 ```bash
 nvm use                      # Node 20 (or install Node 20 another way)
 cp .env.example server/.env  # server reads server/.env (DATABASE_URL etc.)
+# The leads dashboard requires the admin token. The default in .env.example is
+# "dev-admin-token". Enter it in the "Unlock dashboard" gate in the web app.
 npm install                  # root npm workspaces installs server + web
 
 npm run db:up                # start Postgres (docker compose)
@@ -96,6 +98,26 @@ the `(leadId, serviceId)` composite key. Alternative considered: **upsert/merge*
 service interests into the existing lead — rejected for predictability, but it's the
 natural next step if "re-registering updates your interests" becomes a requirement.
 
+## Admin boundary (stretch)
+
+Registration (`register` mutation) and service listing (`services` query) are **public** —
+the sign-up form needs them with no credentials. The `leads` and `lead` queries expose PII
+and are **admin-only**.
+
+Enforcement is **server-side**: both resolvers call `requireAdmin(ctx)` before touching
+the database. If the request does not carry `Authorization: Bearer <ADMIN_TOKEN>` matching
+the server's `ADMIN_TOKEN` env var, a `UNAUTHENTICATED` GraphQL error is returned
+regardless of what the frontend does.
+
+The frontend complements this with a simple UX gate (`AdminGate` component): the dashboard
+tab prompts for the token if none is stored. On entry the token is saved to `localStorage`
+and an Apollo auth link attaches it as `Authorization: Bearer …` to every GraphQL request.
+"Log out" removes the token and clears the Apollo cache so no PII lingers in memory.
+
+This is a **deliberate lightweight choice** — a single shared secret is far simpler than
+full user/JWT auth and appropriate for an internal prototype. At scale, replace with real
+auth (e.g. Auth0 / Cognito), per-user JWTs, role-based access control, and token rotation.
+
 ## What I'd change at 10× scale
 
 - **Connection pooling** (PgBouncer) and **read replicas** for the read-heavy dashboard.
@@ -110,7 +132,8 @@ natural next step if "re-registering updates your interests" becomes a requireme
 
 ## TODOs / known gaps
 
-- No auth / admin boundary on the dashboard (the chosen stretch goal was rate-limiting).
+- The dashboard now has a shared-token admin boundary (see "Admin boundary" above), but it
+  is a single shared secret — there are no per-user accounts, roles, or token rotation.
 - Rate limiter is **in-memory**, so limits are per-process — fine for one instance only.
 - **Offset** pagination, not cursor.
 - No GraphQL code generation — the web TS types and operations are hand-written and kept
