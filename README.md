@@ -31,6 +31,7 @@ npm run dev                  # server on :4000 + web (Vite) concurrently
 
 - GraphQL API + Apollo Sandbox: http://localhost:4000/
 - Web app: the URL Vite prints (typically http://localhost:5173/)
+- Routes: `/register` (public form) · `/admin` (leads dashboard, behind the admin token)
 
 The web app defaults to `http://localhost:4000/` for the API. To point it elsewhere,
 create `web/.env` with `VITE_GRAPHQL_URL=...` (Vite reads env from the `web/` directory).
@@ -53,8 +54,9 @@ npm test                     # server (Vitest) + web (Vitest + Testing Library)
 > `docker exec -i "$(docker compose ps -q db)" psql -U brighte -d postgres -c "CREATE DATABASE brighte_eats_test;"`
 
 - Server: validation (incl. a guard that mobile stays required), register (happy path /
-  duplicate / unknown + duplicate service code), leads pagination + filter, rate limiter,
-  and the admin token boundary (incl. non-admin rejection) — 20 tests.
+  duplicate / unknown + duplicate service code / history logged), leads pagination + filter,
+  rate limiter, the admin token boundary, and the audit trail (`setLeadServices` add/remove,
+  unknown-code + missing-lead + history-guard) — 26 tests.
 - Web: registration form (success, API error, validation block) and the admin gate — 5 tests.
 
 ## Why I chose [database / framework / frontend library]
@@ -66,7 +68,11 @@ npm test                     # server (Vitest) + web (Vitest + Testing Library)
 - **Apollo Server (standalone)** — mature, minimal setup, clean typed error `extensions`.
 - **React + Vite** — fast dev loop, ubiquitous, easy to reason about.
 - **Apollo Client** — built-in loading/error state, a normalized cache that dedupes the
-  shared `services` query, and simple `refetch` for retry.
+  shared `services` query, simple `refetch` for retry, and `optimisticResponse` for the
+  registration form.
+- **React Router** — separate public `/register` and admin `/admin` routes.
+- **Tailwind CSS** — utility-first styling, fast and consistent (styling only; the brief
+  values reasoning over polish, so this was kept lightweight).
 
 ## Data modelling trade-offs
 
@@ -98,6 +104,8 @@ service codes in a single request are de-duplicated before insert so they cannot
 the `(leadId, serviceId)` composite key. Alternative considered: **upsert/merge** new
 service interests into the existing lead — rejected for predictability, but it's the
 natural next step if "re-registering updates your interests" becomes a requirement.
+Admins can change a lead's interests after the fact via the `setLeadServices` mutation,
+which records every add/remove (see **Audit trail**).
 
 ## Admin boundary (stretch)
 
@@ -119,6 +127,30 @@ This is a **deliberate lightweight choice** — a single shared secret is far si
 full user/JWT auth and appropriate for an internal prototype. At scale, replace with real
 auth (e.g. Auth0 / Cognito), per-user JWTs, role-based access control, and token rotation.
 
+## Audit trail (stretch)
+
+Every change to a lead's service interests is recorded in a `ServiceInterestChange` table
+(`leadId`, `serviceCode` snapshot, `action` `ADDED|REMOVED`, `source`
+`registration|admin_edit`, `changedAt`). At registration each initial interest is logged
+`ADDED` **atomically with the lead** (same transaction). Admins can edit interests via the
+`setLeadServices(leadId, services[])` mutation, which diffs current vs target, applies the
+`LeadService` changes, and logs each add/remove — all inside one **serializable**
+transaction so concurrent edits can't compute a stale diff. `Lead.history` exposes the
+log (admin-only); the dashboard's lead detail shows the timeline and an inline editor.
+The `serviceCode` is stored as a snapshot so history survives a service being removed.
+
+## Frontend extras (stretch)
+
+- **Routing** — `react-router` splits the public `/register` form from the gated `/admin`
+  dashboard (distinct URLs instead of a tab toggle).
+- **Optimistic UI** — the registration form uses Apollo `optimisticResponse` to show an
+  instant provisional success; on a server reject (e.g. duplicate email) it rolls back to
+  an error **and keeps the user's input** for a retry.
+
+> Note on scope: the brief suggests picking *one* stretch goal. This repo implements
+> several (rate-limiting, admin boundary, audit trail, optimistic UI) — done knowingly, to
+> demonstrate breadth across the rubric. The core flow and tests remain the priority.
+
 ## What I'd change at 10× scale
 
 - **Connection pooling** (PgBouncer) and **read replicas** for the read-heavy dashboard.
@@ -135,6 +167,10 @@ auth (e.g. Auth0 / Cognito), per-user JWTs, role-based access control, and token
 
 - The dashboard now has a shared-token admin boundary (see "Admin boundary" above), but it
   is a single shared secret — there are no per-user accounts, roles, or token rotation.
+- Audit-trail `source` is the action origin (`registration`/`admin_edit`), not a per-user
+  actor — there's no user identity behind the shared admin token to attribute edits to.
+- Retiring a service type isn't graceful yet — no `Service.active` flag, so a removed type
+  would need soft-delete to keep history while hiding it from new registrations.
 - Rate limiter is **in-memory**, so limits are per-process — fine for one instance only.
 - **Offset** pagination, not cursor.
 - No GraphQL code generation — the web TS types and operations are hand-written and kept
