@@ -44,6 +44,37 @@ describe("RegistrationForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/already exists/i);
   });
 
+  it("shows a success message on the happy path", async () => {
+    const user = userEvent.setup();
+    const successMock = {
+      request: {
+        query: REGISTER,
+        variables: {
+          input: {
+            name: "Ada", email: "ada@example.com", mobile: "0412345678",
+            postcode: "2000", services: ["delivery"],
+          },
+        },
+      },
+      result: {
+        data: {
+          register: {
+            id: "lead-1", name: "Ada", email: "ada@example.com",
+            services: [{ code: "delivery", label: "Delivery" }],
+          },
+        },
+      },
+    };
+    render(
+      <MockedProvider mocks={[servicesMock, successMock]} addTypename={false}>
+        <RegistrationForm />
+      </MockedProvider>
+    );
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(await screen.findByRole("status")).toHaveTextContent(/registered/i);
+  });
+
   it("blocks submit and shows validation when input is invalid", async () => {
     const user = userEvent.setup();
     render(
