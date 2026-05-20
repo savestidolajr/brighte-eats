@@ -14,11 +14,25 @@ export function RegistrationForm() {
   const [fields, setFields] = useState(EMPTY);
   const [services, setServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [success, setSuccess] = useState(false);
-
-  const [register, { loading, error, reset }] = useMutation(REGISTER, {
+  const [register, { loading, error, reset, data }] = useMutation(REGISTER, {
+    // Optimistic: Apollo sets `data` to this immediately on submit, so the
+    // success banner shows at once. If the server errors, `data` is rolled
+    // back and `error` is set — the form below stays filled for a retry.
+    optimisticResponse: (vars: { input: { name: string; email: string; services: string[] } }) => ({
+      register: {
+        __typename: "Lead" as const,
+        id: "optimistic",
+        name: vars.input.name,
+        email: vars.input.email,
+        services: vars.input.services.map((code) => ({
+          __typename: "Service" as const,
+          code,
+          label: code,
+        })),
+      },
+    }),
     onCompleted: () => {
-      setSuccess(true);
+      // Real success — now safe to reset the form.
       setFields(EMPTY);
       setServices([]);
       setErrors({});
@@ -33,7 +47,6 @@ export function RegistrationForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSuccess(false);
     reset(); // clear any error from a previous submit so stale banners don't linger
     const parsed = registerFormSchema.safeParse({ ...fields, services });
     if (!parsed.success) {
@@ -98,7 +111,7 @@ export function RegistrationForm() {
           {error.graphQLErrors[0]?.message ?? error.message}
         </p>
       )}
-      {success && (
+      {data?.register && !error && (
         <p role="status" style={{ color: "green" }}>
           Thanks — your interest has been registered.
         </p>
