@@ -42,3 +42,6 @@ Thumbs.db
 
 # Docker volumes (if mapped locally)
 pgdata/
+
+# Superpowers tooling artifacts (specs/plans) — local only, not deliverables
+docs/superpowers/
