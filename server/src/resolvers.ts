@@ -94,57 +94,62 @@ export async function setLeadServices(
     });
   }
 
-  const lead = await prisma.lead.findUnique({
-    where: { id: leadId },
-    include: { services: { include: { service: true } } },
-  });
-  if (!lead) {
-    throw new GraphQLError("Lead not found", {
-      extensions: { code: "NOT_FOUND" },
-    });
-  }
-
-  const currentCodes = new Set(lead.services.map((ls) => ls.service.code));
   const targetCodes = new Set(uniqueCodes);
-  const toAdd = services.filter((s) => !currentCodes.has(s.code));
-  const toRemove = lead.services.filter(
-    (ls) => !targetCodes.has(ls.service.code)
-  );
 
-  await prisma.$transaction(async (tx) => {
-    if (toRemove.length) {
-      await tx.leadService.deleteMany({
-        where: {
+  // Read current interests, diff, and write all inside one serializable
+  // transaction so concurrent edits can't compute a stale diff.
+  return await prisma.$transaction(
+    async (tx) => {
+      const lead = await tx.lead.findUnique({
+        where: { id: leadId },
+        include: { services: { include: { service: true } } },
+      });
+      if (!lead) {
+        throw new GraphQLError("Lead not found", {
+          extensions: { code: "NOT_FOUND" },
+        });
+      }
+
+      const currentCodes = new Set(lead.services.map((ls) => ls.service.code));
+      const toAdd = services.filter((s) => !currentCodes.has(s.code));
+      const toRemove = lead.services.filter(
+        (ls) => !targetCodes.has(ls.service.code)
+      );
+
+      if (toRemove.length) {
+        await tx.leadService.deleteMany({
+          where: {
+            leadId,
+            serviceId: { in: toRemove.map((ls) => ls.serviceId) },
+          },
+        });
+      }
+      if (toAdd.length) {
+        await tx.leadService.createMany({
+          data: toAdd.map((s) => ({ leadId, serviceId: s.id })),
+        });
+      }
+      const changes = [
+        ...toAdd.map((s) => ({
           leadId,
-          serviceId: { in: toRemove.map((ls) => ls.serviceId) },
-        },
-      });
-    }
-    if (toAdd.length) {
-      await tx.leadService.createMany({
-        data: toAdd.map((s) => ({ leadId, serviceId: s.id })),
-      });
-    }
-    const changes = [
-      ...toAdd.map((s) => ({
-        leadId,
-        serviceCode: s.code,
-        action: "ADDED",
-        source: "admin_edit",
-      })),
-      ...toRemove.map((ls) => ({
-        leadId,
-        serviceCode: ls.service.code,
-        action: "REMOVED",
-        source: "admin_edit",
-      })),
-    ];
-    if (changes.length) {
-      await tx.serviceInterestChange.createMany({ data: changes });
-    }
-  });
-
-  return prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
+          serviceCode: s.code,
+          action: "ADDED",
+          source: "admin_edit",
+        })),
+        ...toRemove.map((ls) => ({
+          leadId,
+          serviceCode: ls.service.code,
+          action: "REMOVED",
+          source: "admin_edit",
+        })),
+      ];
+      if (changes.length) {
+        await tx.serviceInterestChange.createMany({ data: changes });
+      }
+      return lead;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }
 
 type LeadsArgs = {

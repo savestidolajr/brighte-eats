@@ -9,6 +9,7 @@ export const typeDefs = /* GraphQL */ `
     id: ID!
     serviceCode: String!
     action: String!
+    source: String!
     changedAt: String!
   }
 

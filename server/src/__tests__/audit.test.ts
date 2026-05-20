@@ -49,4 +49,18 @@ describe("setLeadServices", () => {
       resolvers.Mutation.setLeadServices({}, { leadId: lead.id, services: ["payment"] }, anon)
     ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } });
   });
+
+  it("rejects a missing lead id", async () => {
+    await expect(
+      setLeadServices(prisma, "does-not-exist", ["delivery"])
+    ).rejects.toMatchObject({ extensions: { code: "NOT_FOUND" } });
+  });
+
+  it("guards Lead.history against non-admins", async () => {
+    const lead = await makeLead();
+    const anon = buildContext(prisma, "ip", false);
+    expect(() => resolvers.Lead.history({ id: lead.id } as any, {}, anon)).toThrow(
+      /admin access required/i
+    );
+  });
 });
