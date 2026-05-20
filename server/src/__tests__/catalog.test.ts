@@ -65,6 +65,48 @@ describe("service catalog management", () => {
         name: "Z", email: "z@x.com", mobile: "0400000000",
         postcode: "2000", services: ["payment"],
       })
+    ).rejects.toMatchObject({ extensions: { code: "SERVICE_UNAVAILABLE" } });
+  });
+
+  it("rejects updateService for a non-admin", async () => {
+    await expect(
+      resolvers.Mutation.updateService({}, { code: "delivery", label: "X" }, anon())
+    ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("rejects setServiceActive for a non-admin", async () => {
+    await expect(
+      resolvers.Mutation.setServiceActive({}, { code: "delivery", active: false }, anon())
+    ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("rejects allServices for a non-admin", async () => {
+    await expect(
+      resolvers.Query.allServices({}, {}, anon())
+    ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("updateService returns NOT_FOUND for an unknown code", async () => {
+    await expect(
+      resolvers.Mutation.updateService({}, { code: "nonexistent", label: "X" }, admin())
+    ).rejects.toMatchObject({ extensions: { code: "NOT_FOUND" } });
+  });
+
+  it("setServiceActive returns NOT_FOUND for an unknown code", async () => {
+    await expect(
+      resolvers.Mutation.setServiceActive({}, { code: "nonexistent", active: false }, admin())
+    ).rejects.toMatchObject({ extensions: { code: "NOT_FOUND" } });
+  });
+
+  it("rejects createService with an invalid code format", async () => {
+    await expect(
+      resolvers.Mutation.createService({}, { code: "HAS SPACES", label: "X" }, admin())
+    ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
+  });
+
+  it("rejects createService with an empty label", async () => {
+    await expect(
+      resolvers.Mutation.createService({}, { code: "valid-code", label: "" }, admin())
     ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
   });
 });

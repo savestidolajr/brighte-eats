@@ -25,8 +25,22 @@ export async function registerLead(
   });
   if (services.length !== uniqueCodes.length) {
     const known = new Set(services.map((s) => s.code));
-    const unknown = uniqueCodes.filter((c) => !known.has(c));
-    throw new GraphQLError(`Unknown service code(s): ${unknown.join(", ")}`, {
+    const missing = uniqueCodes.filter((c) => !known.has(c));
+    // A missing code is either retired (exists, inactive) or truly unknown.
+    const retired = await prisma.service.findMany({
+      where: { code: { in: missing }, active: false },
+      select: { code: true },
+    });
+    const retiredSet = new Set(retired.map((s) => s.code));
+    const retiredCodes = missing.filter((c) => retiredSet.has(c));
+    const unknownCodes = missing.filter((c) => !retiredSet.has(c));
+    if (retiredCodes.length) {
+      throw new GraphQLError(
+        `Service(s) no longer available: ${retiredCodes.join(", ")}`,
+        { extensions: { code: "SERVICE_UNAVAILABLE" } }
+      );
+    }
+    throw new GraphQLError(`Unknown service code(s): ${unknownCodes.join(", ")}`, {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
@@ -175,7 +189,7 @@ export const resolvers = {
         orderBy: { code: "asc" },
       }),
 
-    allServices: (_p: unknown, _a: unknown, ctx: Context) => {
+    allServices: async (_p: unknown, _a: unknown, ctx: Context) => {
       requireAdmin(ctx);
       return ctx.prisma.service.findMany({ orderBy: { code: "asc" } });
     },
@@ -230,11 +244,15 @@ export const resolvers = {
       const code = serviceCodeSchema.safeParse(args.code);
       const label = serviceLabelSchema.safeParse(args.label);
       if (!code.success || !label.success) {
-        throw new GraphQLError(
-          (code.success ? label : code).error!.issues[0].message,
-          { extensions: { code: "BAD_USER_INPUT" } }
-        );
+        const issues = [
+          ...(code.success ? [] : code.error.issues),
+          ...(label.success ? [] : label.error.issues),
+        ];
+        throw new GraphQLError(issues.map((i) => i.message).join("; "), {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
       }
+      // Both parsed OK — TS narrows code/label to their success variants here.
       try {
         return await ctx.prisma.service.create({
           data: { code: code.data, label: label.data },
