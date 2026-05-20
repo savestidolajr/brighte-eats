@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 import { Prisma, type PrismaClient, type Lead } from "@prisma/client";
 import type { Context } from "./context.js";
 import { registerInputSchema } from "./validation.js";
+import { registerLimiter } from "./rateLimit.js";
 
 // Core register logic, decoupled from GraphQL args for direct unit testing.
 export async function registerLead(
@@ -91,8 +92,14 @@ export const resolvers = {
   },
 
   Mutation: {
-    register: (_p: unknown, args: { input: unknown }, ctx: Context) =>
-      registerLead(ctx.prisma, args.input),
+    register: (_p: unknown, args: { input: unknown }, ctx: Context) => {
+      if (!registerLimiter.check(ctx.ip)) {
+        throw new GraphQLError("Too many registrations, slow down", {
+          extensions: { code: "TOO_MANY_REQUESTS" },
+        });
+      }
+      return registerLead(ctx.prisma, args.input);
+    },
   },
 
   Lead: {
