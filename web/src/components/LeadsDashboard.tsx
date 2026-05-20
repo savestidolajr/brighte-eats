@@ -10,7 +10,11 @@ export function LeadsDashboard() {
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data: svcData } = useQuery<{ services: Service[] }>(SERVICES);
+  const {
+    data: svcData,
+    loading: svcLoading,
+    error: svcError,
+  } = useQuery<{ services: Service[] }>(SERVICES);
   const { data, loading, error, refetch } = useQuery<{ leads: LeadConnection }>(
     LEADS,
     {
@@ -51,6 +55,10 @@ export function LeadsDashboard() {
             ))}
           </select>
         </label>
+        {svcLoading && <span>loading…</span>}
+        {svcError && (
+          <span style={{ color: "crimson" }}>services unavailable</span>
+        )}
       </div>
 
       {loading && !conn && <p>Loading leads…</p>}

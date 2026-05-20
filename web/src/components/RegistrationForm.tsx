@@ -6,13 +6,17 @@ import { registerFormSchema } from "../validation";
 const EMPTY = { name: "", email: "", mobile: "", postcode: "" };
 
 export function RegistrationForm() {
-  const { data: svcData } = useQuery<{ services: Service[] }>(SERVICES);
+  const {
+    data: svcData,
+    loading: svcLoading,
+    error: svcError,
+  } = useQuery<{ services: Service[] }>(SERVICES);
   const [fields, setFields] = useState(EMPTY);
   const [services, setServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
 
-  const [register, { loading, error }] = useMutation(REGISTER, {
+  const [register, { loading, error, reset }] = useMutation(REGISTER, {
     onCompleted: () => {
       setSuccess(true);
       setFields(EMPTY);
@@ -30,6 +34,7 @@ export function RegistrationForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSuccess(false);
+    reset(); // clear any error from a previous submit so stale banners don't linger
     const parsed = registerFormSchema.safeParse({ ...fields, services });
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
@@ -63,6 +68,12 @@ export function RegistrationForm() {
 
       <fieldset style={{ marginBottom: 12 }}>
         <legend>Services</legend>
+        {svcLoading && <small>Loading services…</small>}
+        {svcError && (
+          <small style={{ color: "crimson" }}>
+            Could not load services. Refresh to try again.
+          </small>
+        )}
         {(svcData?.services ?? []).map((s) => (
           <label key={s.code} style={{ display: "block" }}>
             <input
