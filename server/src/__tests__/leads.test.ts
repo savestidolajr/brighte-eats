@@ -4,7 +4,7 @@ import { registerLead, resolvers } from "../resolvers.js";
 import { buildContext } from "../context.js";
 
 function ctx() {
-  return buildContext(prisma, "test-ip");
+  return buildContext(prisma, "test-ip", true);
 }
 
 beforeAll(async () => {
@@ -39,5 +39,19 @@ describe("leads query", () => {
     );
     expect(res.items).toHaveLength(1);
     expect(res.items[0].email).toBe("b@x.com");
+  });
+
+  it("rejects leads for a non-admin", async () => {
+    const anon = buildContext(prisma, "test-ip", false);
+    await expect(
+      resolvers.Query.leads({}, {}, anon)
+    ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("rejects lead(id) for a non-admin", async () => {
+    const anon = buildContext(prisma, "test-ip", false);
+    expect(() => resolvers.Query.lead({}, { id: "x" }, anon)).toThrow(
+      /admin access required/i
+    );
   });
 });

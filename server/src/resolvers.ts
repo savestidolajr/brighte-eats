@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient, type Lead } from "@prisma/client";
 import type { Context } from "./context.js";
 import { registerInputSchema } from "./validation.js";
 import { registerLimiter } from "./rateLimit.js";
+import { requireAdmin } from "./auth.js";
 
 // Core register logic, decoupled from GraphQL args for direct unit testing.
 export async function registerLead(
@@ -67,10 +68,13 @@ export const resolvers = {
     services: (_p: unknown, _a: unknown, ctx: Context) =>
       ctx.prisma.service.findMany({ orderBy: { code: "asc" } }),
 
-    lead: (_p: unknown, args: { id: string }, ctx: Context) =>
-      ctx.prisma.lead.findUnique({ where: { id: args.id } }),
+    lead: (_p: unknown, args: { id: string }, ctx: Context) => {
+      requireAdmin(ctx);
+      return ctx.prisma.lead.findUnique({ where: { id: args.id } });
+    },
 
     leads: async (_p: unknown, args: LeadsArgs, ctx: Context) => {
+      requireAdmin(ctx);
       const limit = Math.min(Math.max(args.limit ?? 20, 1), 100);
       const offset = Math.max(args.offset ?? 0, 0);
       const where = args.service

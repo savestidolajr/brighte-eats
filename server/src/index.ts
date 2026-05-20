@@ -4,6 +4,7 @@ import { typeDefs } from "./schema.js";
 import { resolvers } from "./resolvers.js";
 import { prisma } from "./prisma.js";
 import { buildContext, type Context } from "./context.js";
+import { isAdminToken } from "./auth.js";
 
 const server = new ApolloServer<Context>({ typeDefs, resolvers });
 
@@ -16,7 +17,8 @@ const { url } = await startStandaloneServer(server, {
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       req.socket.remoteAddress ||
       "unknown";
-    return buildContext(prisma, ip);
+    const auth = (req.headers["authorization"] as string) ?? "";
+    return buildContext(prisma, ip, isAdminToken(auth));
   },
 });
 
