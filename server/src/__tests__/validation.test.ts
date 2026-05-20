@@ -29,4 +29,12 @@ describe("registerInputSchema", () => {
     const r = registerInputSchema.safeParse({ ...valid, postcode: "12" });
     expect(r.success).toBe(false);
   });
+
+  // Guards the contract: mobile is currently REQUIRED. If a future change makes
+  // it optional, this test fails and forces that decision to be deliberate.
+  it("rejects a missing mobile (mobile is required today)", () => {
+    const { mobile, ...withoutMobile } = valid;
+    const r = registerInputSchema.safeParse(withoutMobile);
+    expect(r.success).toBe(false);
+  });
 });
