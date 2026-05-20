@@ -21,7 +21,7 @@ export async function registerLead(
   const uniqueCodes = [...new Set(input.services)];
 
   const services = await prisma.service.findMany({
-    where: { code: { in: uniqueCodes } },
+    where: { code: { in: uniqueCodes }, active: true },
   });
   if (services.length !== uniqueCodes.length) {
     const known = new Set(services.map((s) => s.code));
@@ -68,6 +68,13 @@ export async function registerLead(
 }
 
 const codesSchema = z.array(z.string().min(1)).min(1, "Select at least one service");
+
+const serviceCodeSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9-]+$/, "Code must be lowercase letters, numbers, or hyphens");
+const serviceLabelSchema = z.string().trim().min(1, "Label is required").max(80);
 
 // Admin: replace a lead's service interests with `rawCodes`, logging each add/remove.
 export async function setLeadServices(
@@ -163,7 +170,15 @@ type LeadsArgs = {
 export const resolvers = {
   Query: {
     services: (_p: unknown, _a: unknown, ctx: Context) =>
-      ctx.prisma.service.findMany({ orderBy: { code: "asc" } }),
+      ctx.prisma.service.findMany({
+        where: { active: true },
+        orderBy: { code: "asc" },
+      }),
+
+    allServices: (_p: unknown, _a: unknown, ctx: Context) => {
+      requireAdmin(ctx);
+      return ctx.prisma.service.findMany({ orderBy: { code: "asc" } });
+    },
 
     lead: (_p: unknown, args: { id: string }, ctx: Context) => {
       requireAdmin(ctx);
@@ -204,6 +219,91 @@ export const resolvers = {
     ) => {
       requireAdmin(ctx);
       return setLeadServices(ctx.prisma, args.leadId, args.services);
+    },
+
+    createService: async (
+      _p: unknown,
+      args: { code: string; label: string },
+      ctx: Context
+    ) => {
+      requireAdmin(ctx);
+      const code = serviceCodeSchema.safeParse(args.code);
+      const label = serviceLabelSchema.safeParse(args.label);
+      if (!code.success || !label.success) {
+        throw new GraphQLError(
+          (code.success ? label : code).error!.issues[0].message,
+          { extensions: { code: "BAD_USER_INPUT" } }
+        );
+      }
+      try {
+        return await ctx.prisma.service.create({
+          data: { code: code.data, label: label.data },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2002"
+        ) {
+          throw new GraphQLError("A service with this code already exists", {
+            extensions: { code: "CODE_TAKEN" },
+          });
+        }
+        throw e;
+      }
+    },
+
+    updateService: async (
+      _p: unknown,
+      args: { code: string; label: string },
+      ctx: Context
+    ) => {
+      requireAdmin(ctx);
+      const label = serviceLabelSchema.safeParse(args.label);
+      if (!label.success) {
+        throw new GraphQLError(label.error.issues[0].message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      try {
+        return await ctx.prisma.service.update({
+          where: { code: args.code },
+          data: { label: label.data },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2025"
+        ) {
+          throw new GraphQLError("Service not found", {
+            extensions: { code: "NOT_FOUND" },
+          });
+        }
+        throw e;
+      }
+    },
+
+    setServiceActive: async (
+      _p: unknown,
+      args: { code: string; active: boolean },
+      ctx: Context
+    ) => {
+      requireAdmin(ctx);
+      try {
+        return await ctx.prisma.service.update({
+          where: { code: args.code },
+          data: { active: args.active },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2025"
+        ) {
+          throw new GraphQLError("Service not found", {
+            extensions: { code: "NOT_FOUND" },
+          });
+        }
+        throw e;
+      }
     },
   },
 
