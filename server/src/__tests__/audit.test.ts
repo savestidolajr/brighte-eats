@@ -14,7 +14,7 @@ afterAll(async () => {
 async function makeLead() {
   return registerLead(prisma, {
     name: "Ada", email: "ada@example.com", mobile: "0412345678",
-    postcode: "2000", services: ["delivery"],
+    postcode: "2000", suburb: "Sydney", services: ["delivery"],
   });
 }
 

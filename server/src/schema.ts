@@ -20,6 +20,7 @@ export const typeDefs = /* GraphQL */ `
     email: String!
     mobile: String!
     postcode: String!
+    suburb: String
     createdAt: String!
     services: [Service!]!
     history: [ServiceInterestChange!]!
@@ -47,6 +48,7 @@ export const typeDefs = /* GraphQL */ `
     email: String!
     mobile: String!
     postcode: String!
+    suburb: String!
     services: [String!]!
   }
 

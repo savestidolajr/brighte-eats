@@ -6,6 +6,7 @@ export const registerFormSchema = z.object({
   email: z.string().trim().email("Invalid email"),
   mobile: z.string().trim().regex(/^0\d{9}$/, "Mobile must be 10 digits starting with 0"),
   postcode: z.string().trim().regex(/^\d{4}$/, "Postcode must be 4 digits"),
+  suburb: z.string().trim().min(1, "Suburb is required").max(80),
   services: z.array(z.string()).min(1, "Select at least one service"),
 });
 

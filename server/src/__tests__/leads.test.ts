@@ -15,11 +15,11 @@ beforeEach(async () => {
   await seedServices();
   await registerLead(prisma, {
     name: "A", email: "a@x.com", mobile: "0400000001",
-    postcode: "2000", services: ["delivery"],
+    postcode: "2000", suburb: "Sydney", services: ["delivery"],
   });
   await registerLead(prisma, {
     name: "B", email: "b@x.com", mobile: "0400000002",
-    postcode: "2000", services: ["payment"],
+    postcode: "2000", suburb: "Sydney", services: ["payment"],
   });
 });
 afterAll(async () => {

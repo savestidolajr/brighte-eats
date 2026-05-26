@@ -63,7 +63,7 @@ describe("service catalog management", () => {
     await expect(
       registerLead(prisma, {
         name: "Z", email: "z@x.com", mobile: "0400000000",
-        postcode: "2000", services: ["payment"],
+        postcode: "2000", suburb: "Sydney", services: ["payment"],
       })
     ).rejects.toMatchObject({ extensions: { code: "SERVICE_UNAVAILABLE" } });
   });

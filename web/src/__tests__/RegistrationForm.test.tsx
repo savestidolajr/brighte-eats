@@ -16,6 +16,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/email/i), "ada@example.com");
   await user.type(screen.getByLabelText(/mobile/i), "0412345678");
   await user.type(screen.getByLabelText(/postcode/i), "2000");
+  await user.type(screen.getByLabelText(/suburb/i), "Sydney");
   await user.click(await screen.findByLabelText(/delivery/i));
 }
 
@@ -28,7 +29,7 @@ describe("RegistrationForm", () => {
         variables: {
           input: {
             name: "Ada", email: "ada@example.com", mobile: "0412345678",
-            postcode: "2000", services: ["delivery"],
+            postcode: "2000", suburb: "Sydney", services: ["delivery"],
           },
         },
       },
@@ -52,7 +53,7 @@ describe("RegistrationForm", () => {
         variables: {
           input: {
             name: "Ada", email: "ada@example.com", mobile: "0412345678",
-            postcode: "2000", services: ["delivery"],
+            postcode: "2000", suburb: "Sydney", services: ["delivery"],
           },
         },
       },

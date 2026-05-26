@@ -14,6 +14,7 @@ export interface Lead {
   email: string;
   mobile: string;
   postcode: string;
+  suburb?: string | null;
   createdAt: string;
   services: Service[];
   history?: ServiceInterestChange[];
@@ -69,7 +70,7 @@ export const LEADS = gql`
 export const LEAD = gql`
   query Lead($id: ID!) {
     lead(id: $id) {
-      id name email mobile postcode createdAt
+      id name email mobile postcode suburb createdAt
       services { id code label }
       history { id action serviceCode source changedAt }
     }

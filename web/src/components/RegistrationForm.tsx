@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import { REGISTER, SERVICES, type Service } from "../graphql";
 import { registerFormSchema } from "../validation";
 
-const EMPTY = { name: "", email: "", mobile: "", postcode: "" };
+const EMPTY = { name: "", email: "", mobile: "", postcode: "", suburb: "" };
 
 export function RegistrationForm() {
   const {
@@ -69,7 +69,7 @@ export function RegistrationForm() {
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <h2 className="text-lg font-semibold text-slate-800 mb-5">Register your interest</h2>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        {(["name", "email", "mobile", "postcode"] as const).map((k) => (
+        {(["name", "email", "mobile", "postcode", "suburb"] as const).map((k) => (
           <div key={k}>
             <label
               htmlFor={k}

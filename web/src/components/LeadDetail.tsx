@@ -82,6 +82,8 @@ export function LeadDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <dd className="text-slate-900">{lead.mobile}</dd>
               <dt className="font-medium text-slate-600">Postcode</dt>
               <dd className="text-slate-900">{lead.postcode}</dd>
+              <dt className="font-medium text-slate-600">Suburb</dt>
+              <dd className="text-slate-900">{lead.suburb ?? "—"}</dd>
               <dt className="font-medium text-slate-600">Registered</dt>
               <dd className="text-slate-900">{new Date(lead.createdAt).toLocaleString()}</dd>
             </dl>

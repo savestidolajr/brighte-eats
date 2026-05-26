@@ -53,6 +53,7 @@ export async function registerLead(
           email: input.email,
           mobile: input.mobile,
           postcode: input.postcode,
+          suburb: input.suburb,
           services: {
             create: services.map((s) => ({ serviceId: s.id })),
           },
